@@ -4,6 +4,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
@@ -51,26 +52,33 @@ public class FloatingClipboardService extends Service {
 
     private void showHandle() {
         TextView v = new TextView(this);
-        v.setText("≡");
-        v.setTextColor(Color.WHITE);
-        v.setTextSize(20);
+        v.setText("▮▮▮▮");
+        v.setTextColor(Color.rgb(190, 160, 145));
+        v.setTextSize(10);
+        v.setLetterSpacing(0.18f);
         v.setGravity(Gravity.CENTER);
-        v.setBackgroundColor(Color.argb(210, 20, 20, 20));
-        int w = dp(32), h = dp(76);
+        v.setAlpha(0.92f);
+        v.setBackground(sidePillBackground(false));
+
+        int w = dp(50), h = dp(38);
         final WindowManager.LayoutParams lp = new WindowManager.LayoutParams(w, h, overlayType(), WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.RIGHT | Gravity.CENTER_VERTICAL;
-        lp.x = 0; lp.y = 0;
+        lp.x = dp(-2);
+        lp.y = -dp(170);
         handle = v;
         v.setOnTouchListener(new View.OnTouchListener() {
             @Override public boolean onTouch(View view, MotionEvent e) {
                 if (e.getAction() == MotionEvent.ACTION_DOWN) {
-                    downX = e.getRawX(); downY = e.getRawY(); startX = lp.x; startY = lp.y; return true;
+                    downX = e.getRawX(); downY = e.getRawY(); startX = lp.x; startY = lp.y;
+                    handle.setAlpha(1.0f);
+                    return true;
                 }
                 if (e.getAction() == MotionEvent.ACTION_MOVE) {
                     lp.y = startY + (int)(e.getRawY() - downY);
                     wm.updateViewLayout(handle, lp); return true;
                 }
                 if (e.getAction() == MotionEvent.ACTION_UP) {
+                    handle.setAlpha(0.92f);
                     if (Math.abs(e.getRawX() - downX) < 12 && Math.abs(e.getRawY() - downY) < 12) togglePanel();
                     return true;
                 }
@@ -80,31 +88,62 @@ public class FloatingClipboardService extends Service {
         wm.addView(handle, lp);
     }
 
+    private GradientDrawable sidePillBackground(boolean light) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(light ? Color.argb(235, 245, 245, 245) : Color.argb(230, 18, 18, 18));
+        bg.setCornerRadius(dp(20));
+        return bg;
+    }
+
+    private GradientDrawable panelBackground() {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.argb(248, 250, 250, 250));
+        float r = dp(22);
+        bg.setCornerRadii(new float[]{r, r, 0, 0, 0, 0, r, r});
+        return bg;
+    }
+
+    private GradientDrawable cardBackground() {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.WHITE);
+        bg.setCornerRadius(dp(12));
+        return bg;
+    }
+
     private void togglePanel() { if (showing) hidePanel(); else showPanel(); }
 
     private void showPanel() {
         showing = true;
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.argb(245, 248, 248, 248));
+        root.setBackground(panelBackground());
+        root.setElevation(dp(8));
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(12), dp(12), dp(12), dp(12));
+        box.setPadding(dp(14), dp(12), dp(14), dp(12));
         root.addView(box, new FrameLayout.LayoutParams(-1, -1));
 
         TextView title = new TextView(this);
-        title.setText("Logos Clipboard Demo");
-        title.setTextSize(18);
-        title.setTextColor(Color.BLACK);
-        box.addView(title, new LinearLayout.LayoutParams(-1, dp(36)));
+        title.setText("Logos Clipboard");
+        title.setTextSize(19);
+        title.setTextColor(Color.rgb(20, 20, 20));
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        box.addView(title, new LinearLayout.LayoutParams(-1, dp(38)));
 
         search = new EditText(this);
         search.setHint("搜索剪切板 / 常用语");
         search.setSingleLine(true);
-        box.addView(search, new LinearLayout.LayoutParams(-1, dp(46)));
+        search.setTextSize(16);
+        search.setBackgroundColor(Color.TRANSPARENT);
+        box.addView(search, new LinearLayout.LayoutParams(-1, dp(48)));
+
+        View line = new View(this);
+        line.setBackgroundColor(Color.argb(90, 0, 0, 0));
+        box.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
 
         ScrollView scroll = new ScrollView(this);
         listBox = new LinearLayout(this);
         listBox.setOrientation(LinearLayout.VERTICAL);
+        listBox.setPadding(0, dp(10), 0, dp(8));
         scroll.addView(listBox);
         box.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
@@ -113,8 +152,10 @@ public class FloatingClipboardService extends Service {
         close.setGravity(Gravity.CENTER);
         close.setTextSize(16);
         close.setTextColor(Color.WHITE);
-        close.setBackgroundColor(Color.rgb(45,45,45));
-        box.addView(close, new LinearLayout.LayoutParams(-1, dp(44)));
+        close.setBackground(sidePillBackground(false));
+        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(-1, dp(44));
+        closeLp.setMargins(0, dp(4), 0, 0);
+        box.addView(close, closeLp);
         close.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { hidePanel(); }});
 
         search.addTextChangedListener(new TextWatcher() {
@@ -123,8 +164,9 @@ public class FloatingClipboardService extends Service {
             @Override public void afterTextChanged(Editable s) { }
         });
 
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(dp(330), WindowManager.LayoutParams.MATCH_PARENT, overlayType(), WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(dp(320), WindowManager.LayoutParams.MATCH_PARENT, overlayType(), WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.RIGHT | Gravity.TOP;
+        lp.x = 0;
         panel = root;
         wm.addView(panel, lp);
         refresh();
@@ -172,17 +214,18 @@ public class FloatingClipboardService extends Service {
         v.setText(s);
         v.setTextSize(size);
         v.setTextColor(color);
-        v.setPadding(dp(10), dp(10), dp(10), dp(10));
-        v.setBackgroundColor(Color.WHITE);
+        v.setLineSpacing(dp(2), 1.0f);
+        v.setPadding(dp(12), dp(10), dp(12), dp(10));
+        v.setBackground(cardBackground());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, 0, 0, dp(8));
+        lp.setMargins(0, 0, 0, dp(10));
         v.setLayoutParams(lp);
         return v;
     }
 
     private String preview(String s) {
         String p = s.replace('\n', ' ').trim();
-        return p.length() > 96 ? p.substring(0, 96) + "…" : p;
+        return p.length() > 86 ? p.substring(0, 86) + "…" : p;
     }
 
     private int dp(int v) { return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
