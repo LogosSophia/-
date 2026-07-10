@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.logos.clipboarddemo'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.logos.clipboarddemo'
+        minSdk 26
+        targetSdk 35
+        versionCode 4
+        versionName '0.4-full'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

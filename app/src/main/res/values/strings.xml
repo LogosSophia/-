@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Logos Clipboard</string>
+    <string name="accessibility_service_label">Logos Clipboard 自动收集与粘贴</string>
+    <string name="accessibility_service_description">在用户主动开启后，识别复制动作、保存剪切板内容，并将用户选中的内容粘贴到当前输入框。</string>
+</resources>
