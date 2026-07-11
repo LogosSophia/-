@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - '.build/magnetic-flow-v0.1.0-source.zip.b64'
+      - '.build/magnetic-flow-v0.1.0-source.zip.b64.*'
       - '.github/workflows/build-magnetic-flow.yml'
   workflow_dispatch:
 
@@ -20,7 +20,7 @@ jobs:
       - name: Restore source archive
         run: |
           mkdir -p "$RUNNER_TEMP/magnetic-flow"
-          base64 --decode .build/magnetic-flow-v0.1.0-source.zip.b64 > "$RUNNER_TEMP/magnetic-flow.zip"
+          cat .build/magnetic-flow-v0.1.0-source.zip.b64.* | base64 --decode > "$RUNNER_TEMP/magnetic-flow.zip"
           unzip -q "$RUNNER_TEMP/magnetic-flow.zip" -d "$RUNNER_TEMP/magnetic-flow"
 
       - name: Set up JDK 17
