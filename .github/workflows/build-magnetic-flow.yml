@@ -1,0 +1,52 @@
+name: Build Magnetic Flow APK
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.build/magnetic-flow-v0.1.0-source.zip.b64'
+      - '.github/workflows/build-magnetic-flow.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore source archive
+        run: |
+          mkdir -p "$RUNNER_TEMP/magnetic-flow"
+          base64 --decode .build/magnetic-flow-v0.1.0-source.zip.b64 > "$RUNNER_TEMP/magnetic-flow.zip"
+          unzip -q "$RUNNER_TEMP/magnetic-flow.zip" -d "$RUNNER_TEMP/magnetic-flow"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Test and build
+        working-directory: ${{ runner.temp }}/magnetic-flow
+        run: gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MagneticFlow-v0.1.0-debug
+          path: ${{ runner.temp }}/magnetic-flow/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
