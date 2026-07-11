@@ -23,6 +23,30 @@ jobs:
           cat .build/magnetic-flow-v0.1.0-source.zip.b64.* | base64 --decode > "$RUNNER_TEMP/magnetic-flow.zip"
           unzip -q "$RUNNER_TEMP/magnetic-flow.zip" -d "$RUNNER_TEMP/magnetic-flow"
 
+      - name: Apply v0.1.1 source fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root = Path("${{ runner.temp }}/magnetic-flow/app/src/main/java/com/logos/localmagnet")
+
+          main = root / "MainActivity.kt"
+          text = main.read_text()
+          text = text.replace("import androidx.compose.foundation.layout.weight\n", "")
+          main.write_text(text)
+
+          service = root / "TorrentService.kt"
+          text = service.read_text()
+          text = text.replace(
+              "import kotlinx.coroutines.isActive\n",
+              "import kotlinx.coroutines.currentCoroutineContext\nimport kotlinx.coroutines.isActive\n",
+          )
+          text = text.replace(
+              "    private suspend fun pollLoop() {\n        while (isActive) {",
+              "    private suspend fun pollLoop() {\n        while (currentCoroutineContext().isActive) {",
+          )
+          service.write_text(text)
+          PY
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -52,7 +76,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MagneticFlow-v0.1.0-build-log
+          name: MagneticFlow-v0.1.1-build-log
           path: ${{ runner.temp }}/magnetic-flow-build.log
           if-no-files-found: error
 
@@ -60,7 +84,7 @@ jobs:
         if: steps.android_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: MagneticFlow-v0.1.0-debug
+          name: MagneticFlow-v0.1.1-debug
           path: ${{ runner.temp }}/magnetic-flow/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
