@@ -27,14 +27,15 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          root = Path("${{ runner.temp }}/magnetic-flow/app/src/main/java/com/logos/localmagnet")
+          root = Path("${{ runner.temp }}/magnetic-flow")
+          source = root / "app/src/main/java/com/logos/localmagnet"
 
-          main = root / "MainActivity.kt"
+          main = source / "MainActivity.kt"
           text = main.read_text()
           text = text.replace("import androidx.compose.foundation.layout.weight\n", "")
           main.write_text(text)
 
-          service = root / "TorrentService.kt"
+          service = source / "TorrentService.kt"
           text = service.read_text()
           text = text.replace(
               "import kotlinx.coroutines.isActive\n",
@@ -45,6 +46,12 @@ jobs:
               "    private suspend fun pollLoop() {\n        while (currentCoroutineContext().isActive) {",
           )
           service.write_text(text)
+
+          gradle = root / "app/build.gradle.kts"
+          text = gradle.read_text()
+          text = text.replace("versionCode = 1", "versionCode = 2")
+          text = text.replace('versionName = "0.1.0"', 'versionName = "0.1.1"')
+          gradle.write_text(text)
           PY
 
       - name: Set up JDK 17
