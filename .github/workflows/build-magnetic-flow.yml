@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - '.build/magnetic-flow-v0.1.0-source.zip.b64.*'
-      - '.build/magnetic-flow-v0.2.0.patch.gz.b64'
+      - '.build/v020-chunk-*'
       - '.github/workflows/build-magnetic-flow.yml'
   workflow_dispatch:
 
@@ -57,7 +57,9 @@ jobs:
 
       - name: Apply v0.2.0 network diagnostics patch
         run: |
-          base64 --decode .build/magnetic-flow-v0.2.0.patch.gz.b64 | gzip -d > "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
+          cat .build/v020-chunk-* > "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch.gz.b64"
+          echo "4ec3b9c43910144668d74d525e65ff5edd0d83c6bababc76ab1c0cb4354e8445  $RUNNER_TEMP/magnetic-flow-v0.2.0.patch.gz.b64" | sha256sum -c -
+          base64 --decode "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch.gz.b64" | gzip -d > "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
           cd "$RUNNER_TEMP/magnetic-flow"
           patch -p1 < "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
 
