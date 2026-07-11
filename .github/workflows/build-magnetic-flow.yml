@@ -41,12 +41,29 @@ jobs:
           gradle-version: '8.9'
 
       - name: Test and build
+        id: android_build
+        continue-on-error: true
         working-directory: ${{ runner.temp }}/magnetic-flow
-        run: gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/magnetic-flow-build.log"
+
+      - name: Upload full build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MagneticFlow-v0.1.0-build-log
+          path: ${{ runner.temp }}/magnetic-flow-build.log
+          if-no-files-found: error
 
       - name: Upload APK
+        if: steps.android_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: MagneticFlow-v0.1.0-debug
           path: ${{ runner.temp }}/magnetic-flow/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Mark build failure
+        if: steps.android_build.outcome == 'failure'
+        run: exit 1
