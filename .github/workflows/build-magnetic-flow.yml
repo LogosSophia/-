@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - '.build/magnetic-flow-v0.1.0-source.zip.b64.*'
+      - '.build/magnetic-flow-v0.2.0.patch.gz.b64'
       - '.github/workflows/build-magnetic-flow.yml'
   workflow_dispatch:
 
@@ -54,6 +55,12 @@ jobs:
           gradle.write_text(text)
           PY
 
+      - name: Apply v0.2.0 network diagnostics patch
+        run: |
+          base64 --decode .build/magnetic-flow-v0.2.0.patch.gz.b64 | gzip -d > "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
+          cd "$RUNNER_TEMP/magnetic-flow"
+          patch -p1 < "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -83,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MagneticFlow-v0.1.1-build-log
+          name: MagneticFlow-v0.2.0-build-log
           path: ${{ runner.temp }}/magnetic-flow-build.log
           if-no-files-found: error
 
@@ -91,7 +98,7 @@ jobs:
         if: steps.android_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: MagneticFlow-v0.1.1-debug
+          name: MagneticFlow-v0.2.0-debug
           path: ${{ runner.temp }}/magnetic-flow/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
