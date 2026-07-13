@@ -4,8 +4,7 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - '.build/magnetic-flow-v0.1.0-source.zip.b64.*'
-      - '.build/v020-chunk-*'
+      - '.build/v030-source-b64-*'
       - '.github/workflows/build-magnetic-flow.yml'
   workflow_dispatch:
 
@@ -18,50 +17,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Restore source archive
+      - name: Restore v0.3.0 source
         run: |
           mkdir -p "$RUNNER_TEMP/magnetic-flow"
-          cat .build/magnetic-flow-v0.1.0-source.zip.b64.* | base64 --decode > "$RUNNER_TEMP/magnetic-flow.zip"
-          unzip -q "$RUNNER_TEMP/magnetic-flow.zip" -d "$RUNNER_TEMP/magnetic-flow"
+          cat .build/v030-source-b64-* > "$RUNNER_TEMP/magnetic-flow-v0.3.0.tar.gz.b64"
+          echo "787fe9707af6a51bade0d87caa48a47a8f177f9596223015ddbdd0fbd4e7e369  $RUNNER_TEMP/magnetic-flow-v0.3.0.tar.gz.b64" | sha256sum -c -
+          base64 --decode "$RUNNER_TEMP/magnetic-flow-v0.3.0.tar.gz.b64" > "$RUNNER_TEMP/magnetic-flow-v0.3.0.tar.gz"
+          echo "2a3941ce31d481e23e0b51b6e4f901fdec33222c213d7cbdbf650160c55363f5  $RUNNER_TEMP/magnetic-flow-v0.3.0.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/magnetic-flow-v0.3.0.tar.gz" -C "$RUNNER_TEMP/magnetic-flow"
 
-      - name: Apply v0.1.1 source fixes
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          root = Path("${{ runner.temp }}/magnetic-flow")
-          source = root / "app/src/main/java/com/logos/localmagnet"
-
-          main = source / "MainActivity.kt"
-          text = main.read_text()
-          text = text.replace("import androidx.compose.foundation.layout.weight\n", "")
-          main.write_text(text)
-
-          service = source / "TorrentService.kt"
-          text = service.read_text()
-          text = text.replace(
-              "import kotlinx.coroutines.isActive\n",
-              "import kotlinx.coroutines.currentCoroutineContext\nimport kotlinx.coroutines.isActive\n",
-          )
-          text = text.replace(
-              "    private suspend fun pollLoop() {\n        while (isActive) {",
-              "    private suspend fun pollLoop() {\n        while (currentCoroutineContext().isActive) {",
-          )
-          service.write_text(text)
-
-          gradle = root / "app/build.gradle.kts"
-          text = gradle.read_text()
-          text = text.replace("versionCode = 1", "versionCode = 2")
-          text = text.replace('versionName = "0.1.0"', 'versionName = "0.1.1"')
-          gradle.write_text(text)
-          PY
-
-      - name: Apply v0.2.0 network diagnostics patch
-        run: |
-          cat .build/v020-chunk-* > "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch.gz.b64"
-          echo "4ec3b9c43910144668d74d525e65ff5edd0d83c6bababc76ab1c0cb4354e8445  $RUNNER_TEMP/magnetic-flow-v0.2.0.patch.gz.b64" | sha256sum -c -
-          base64 --decode "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch.gz.b64" | gzip -d > "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
-          cd "$RUNNER_TEMP/magnetic-flow"
-          patch -p1 < "$RUNNER_TEMP/magnetic-flow-v0.2.0.patch"
+      - name: Verify project
+        working-directory: ${{ runner.temp }}/magnetic-flow
+        run: bash scripts/verify-project.sh
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -92,15 +59,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: MagneticFlow-v0.2.0-build-log
+          name: MagneticFlow-v0.3.0-build-log
           path: ${{ runner.temp }}/magnetic-flow-build.log
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload APK
         if: steps.android_build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: MagneticFlow-v0.2.0-debug
+          name: MagneticFlow-v0.3.0-debug
           path: ${{ runner.temp }}/magnetic-flow/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
