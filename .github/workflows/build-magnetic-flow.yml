@@ -1,0 +1,79 @@
+name: Build Magnetic Flow APK
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.build/v031-chunk-*'
+      - '.github/workflows/build-magnetic-flow.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Restore v0.3.1 source
+        run: |
+          mkdir -p "$RUNNER_TEMP/magnetic-flow"
+          cat .build/v031-chunk-* > "$RUNNER_TEMP/magnetic-flow-v0.3.1-source.zip.b64"
+          echo "45cc07368efa72c38bb08ba2cf2fe0b3b79a044a459e65968c37cebae51381f4  $RUNNER_TEMP/magnetic-flow-v0.3.1-source.zip.b64" | sha256sum -c -
+          base64 --decode "$RUNNER_TEMP/magnetic-flow-v0.3.1-source.zip.b64" > "$RUNNER_TEMP/magnetic-flow-v0.3.1-source.zip"
+          echo "09f52cbb4adc23a326242f3608abb7d8b2216faa15ca2d2d1415415945ebbc37  $RUNNER_TEMP/magnetic-flow-v0.3.1-source.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/magnetic-flow-v0.3.1-source.zip" -d "$RUNNER_TEMP/magnetic-flow"
+
+      - name: Verify project
+        working-directory: ${{ runner.temp }}/magnetic-flow
+        run: |
+          grep -q 'versionName = "0.3.1"' app/build.gradle.kts
+          grep -q 'stored.phase == TorrentPhase.FETCHING_METADATA' app/src/main/java/com/logos/localmagnet/TorrentService.kt
+          bash scripts/verify-project.sh
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Test and build
+        id: android_build
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}/magnetic-flow
+        run: |
+          set -o pipefail
+          gradle testDebugUnitTest assembleDebug --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/magnetic-flow-build.log"
+
+      - name: Upload full build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MagneticFlow-v0.3.1-build-log
+          path: ${{ runner.temp }}/magnetic-flow-build.log
+          if-no-files-found: warn
+
+      - name: Upload APK
+        if: steps.android_build.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MagneticFlow-v0.3.1-debug
+          path: ${{ runner.temp }}/magnetic-flow/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Mark build failure
+        if: steps.android_build.outcome == 'failure'
+        run: exit 1
